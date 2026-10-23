@@ -50,6 +50,14 @@ npm start     # 또는 node server.js → http://localhost:3100
 | `GONGMUN_DATA_DIR` | 저장 폴더. 없으면 `RAILWAY_VOLUME_MOUNT_PATH/gongmun`, 그것도 없으면 `data/` |
 | `GONGMUN_PASSWORD` | 정하면 접속할 때 비밀번호를 묻습니다(아이디 칸은 아무거나). 인터넷에 올릴 때는 꼭 정하세요 |
 
+## 웹판(GitHub Pages)
+
+서버 없이 브라우저만으로 도는 판입니다. `gh-pages` 브랜치에 올라가 있고 https://juwang4758.github.io/-/ 에서 씁니다.
+
+- 양식·문서번호·발행대장은 **쓰는 브라우저(localStorage)에만** 저장됩니다. 다른 컴퓨터·브라우저와는 번호가 이어지지 않으니 한 컴퓨터에서 발급하세요. 브라우저 기록을 지우면 발행대장도 지워지므로, 발행대장 CSV를 가끔 받아 두세요.
+- 만들기: `npm install && npm run build:web` → `site/` 폴더를 `gh-pages` 브랜치에 올립니다.
+- 웹판은 서버판과 같은 화면·같은 코드(`lib/`)를 쓰고, `web/local-api.js`가 서버의 `/api/...`를 브라우저 안에서 대신 처리합니다.
+
 ## Railway에 배포하기
 
 1. Railway에서 **New Project → Deploy from GitHub repo**로 이 저장소를 고릅니다. 시작 명령(`node server.js`)과 헬스체크(`/healthz`)는 저장소의 `railway.json`을 따릅니다.

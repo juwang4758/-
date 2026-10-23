@@ -6,9 +6,16 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "build:web": "node web/build.js"
   },
   "engines": {
     "node": "24.x"
+  },
+  "devDependencies": {
+    "buffer": "6.0.3",
+    "esbuild": "0.24.2",
+    "pako": "2.1.0",
+    "path-browserify": "1.0.1"
   }
 }
