@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>공문 자동 작성</title>
+<link rel="icon" href="data:,">
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--fg:#1d2330;--mut:#646c7e;--line:#d9dde5;--pri:#1f3a6b;--soft:#eaf1fb;--warn-bg:#fff6e0;--warn:#7a4b00;--ok-bg:#e8f5ec;--ok:#16502a;--err-bg:#fdecec;--err:#8a1c1c}
+@media (prefers-color-scheme:dark){:root{--bg:#14171d;--card:#1d2129;--fg:#e6e9ef;--mut:#9aa3b5;--line:#343a46;--pri:#8fb0ea;--soft:#243149;--warn-bg:#3a2f14;--warn:#f2cf86;--ok-bg:#163222;--ok:#9be0b2;--err-bg:#3d1c1c;--err:#f3a3a3}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 "Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif}
+header{background:#1f3a6b;color:#fff;padding:10px 16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+header h1{font-size:17px;margin:0 12px 0 0}
+nav button{background:transparent;color:#cfd8ea;border:0;padding:8px 12px;border-radius:6px;font:inherit;cursor:pointer}
+nav button.on{background:#fff;color:#1f3a6b;font-weight:700}
+main{max-width:1180px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px;min-width:0}
+.grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:16px;align-items:start}
+@media(max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+h2{font-size:16px;margin:0 0 8px}
+label{display:block;font-weight:600;margin:12px 0 4px;font-size:13px}
+label.check{font-weight:400;display:flex;gap:6px;align-items:center;font-size:14px}
+label.check input{width:auto}
+input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font:inherit;background:var(--card);color:var(--fg)}
+textarea{min-height:170px;resize:vertical}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:600px){.row2{grid-template-columns:1fr}}
+.hint{color:var(--mut);font-size:12.5px;margin-top:3px}
+.actions{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}
+button.p{background:var(--pri);color:var(--card);border:0;padding:10px 16px;border-radius:6px;font:inherit;font-weight:700;cursor:pointer}
+button.s{background:var(--card);color:var(--fg);border:1px solid var(--line);padding:8px 12px;border-radius:6px;font:inherit;cursor:pointer;white-space:nowrap}
+button:disabled{opacity:.5;cursor:default}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{font-size:12.5px;color:var(--mut);font-weight:600}
+td.file{word-break:break-all}
+th.no,td.no{white-space:nowrap;width:1%}
+.msg{padding:9px 12px;border-radius:6px;margin:10px 0;background:var(--ok-bg);color:var(--ok)}
+.msg.err{background:var(--err-bg);color:var(--err)}
+.msg.warn{background:var(--warn-bg);color:var(--warn)}
+.badge{display:inline-block;font-size:11.5px;padding:1px 6px;border-radius:10px;background:var(--warn-bg);color:var(--warn);margin-left:4px}
+.formline{background:var(--soft);border-radius:8px;padding:10px 12px;font-size:14px}
+.formline b{font-weight:700}
+.scroll{overflow:auto;max-height:280px;margin-top:8px}
+.frame{width:100%;height:78vh;min-height:480px;border:1px solid var(--line);border-radius:6px;background:#fff}
+.empty{color:var(--mut);text-align:center;padding:60px 12px}
+.hidden{display:none!important}
+code{background:var(--soft);padding:1px 5px;border-radius:4px;font-size:13px}
+a{color:var(--pri)}
+</style>
+</head>
+<body>
+<header><h1>공문 자동 작성</h1>
+  <nav><button data-t="make" class="on">공문 만들기</button><button data-t="ledger">발행대장</button><button data-t="settings">설정</button></nav>
+</header>
+<main>
+
+<section id="t-make">
+  <div class="card hidden" id="m-noform">
+    <h2>먼저 공문 양식을 올려 주세요</h2>
+    <p class="hint">엑셀 양식에서 교회 이름이 들어갈 자리에 <code>[교회명]</code>, 문서번호 자리에 <code>[문서번호]</code>라고 적어 둔 파일(.xlsx)을 올리면 됩니다.</p>
+    <button class="p" data-goto="settings">양식 올리러 가기</button>
+  </div>
+  <div class="grid" id="m-main">
+    <div class="card">
+      <div class="formline" id="m-formline"></div>
+      <label for="m-churches">교회명 <span class="hint">(한 줄에 한 곳)</span></label>
+      <textarea id="m-churches" placeholder="한동교회&#10;포항중앙교회&#10;새생명교회"></textarea>
+      <div class="hint">엑셀에서 교회명 열을 복사해 그대로 붙여 넣어도 됩니다. 적은 순서대로 문서번호를 받습니다.</div>
+      <div id="m-datewrap">
+        <label for="m-date">시행일자 <span class="hint">(양식의 [날짜] 자리에 들어감)</span></label>
+        <input type="date" id="m-date">
+      </div>
+      <div id="m-plan"></div>
+      <label class="check" id="m-mergewrap"><input type="checkbox" id="m-merge"> 여러 곳이면 PDF 한 파일로 합치기(인쇄용)</label>
+      <div class="actions">
+        <button class="s" id="btn-preview">미리보기</button>
+        <button class="p" id="btn-issue">문서번호 발급하고 PDF 받기</button>
+      </div>
+      <div id="m-msg"></div>
+      <div id="m-result"></div>
+    </div>
+    <div class="card">
+      <div class="empty" id="m-frame-empty">미리보기를 누르면 첫 번째 교회의 공문이 여기에 보입니다.</div>
+      <iframe class="frame hidden" id="m-frame" title="공문 미리보기"></iframe>
+      <div class="hint hidden" id="m-frame-link"></div>
+    </div>
+  </div>
+</section>
+
+<section id="t-ledger" class="hidden">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <h2 style="margin:0">발행대장</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="s" id="btn-dl-selected" disabled>선택한 공문 받기</button>
+        <button class="s" id="btn-csv">발행대장 엑셀(CSV)</button>
+      </div>
+    </div>
+    <div style="overflow:auto"><table>
+      <thead><tr><th class="no"><input type="checkbox" id="l-all" aria-label="모두 선택"></th><th class="no">문서번호</th><th>시행일자</th><th>교회명</th><th>파일 이름</th><th></th></tr></thead>
+      <tbody id="l-body"></tbody>
+    </table></div>
+    <div id="l-msg"></div>
+  </div>
+</section>
+
+<section id="t-settings" class="hidden">
+  <div class="card">
+    <h2>공문 양식</h2>
+    <div id="s-forminfo" class="formline">아직 올린 양식이 없습니다.</div>
+    <div id="s-sheetwrap" class="hidden">
+      <label for="s-sheet">공문이 있는 시트</label>
+      <select id="s-sheet"></select>
+    </div>
+    <label for="s-file">양식 파일 올리기 (.xlsx)</label>
+    <input type="file" id="s-file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+    <div class="hint">엑셀에서 교회 이름 자리에 <code>[교회명]</code>, 문서번호 자리에 <code>[문서번호]</code>, 날짜를 자동으로 넣을 자리에 <code>[날짜]</code>라고 적어 두세요. 로고·글자 크기·칸 배치는 엑셀 그대로 PDF에 나옵니다.</div>
+    <div class="actions"><button class="s" id="btn-form-dl">지금 양식 내려받기</button></div>
+    <div id="s-formmsg"></div>
+  </div>
+  <div class="card">
+    <h2>파일 이름·문서번호</h2>
+    <label for="s-fileNameFormat">파일 이름 형식</label>
+    <input id="s-fileNameFormat">
+    <div class="hint"><code>[제목]</code> 양식의 제목 칸, <code>[교회명]</code>, <code>[문서번호]</code>, <code>[날짜]</code>를 쓸 수 있습니다. 그 밖의 대괄호 글자는 그대로 들어갑니다.</div>
+    <div class="hint" id="s-example"></div>
+    <div class="row2">
+      <div><label for="s-nextNumber">다음 문서번호</label><input id="s-nextNumber" type="number" min="1">
+        <div class="hint">발급할 때마다 자동으로 1씩 오릅니다. 엑셀에서 쓰던 번호를 이어가려면 마지막 번호 + 1을 넣으세요.</div></div>
+      <div><label for="s-digits">문서번호 자릿수</label>
+        <select id="s-digits"><option value="0">그대로 (7)</option><option value="2">2자리 (07)</option><option value="3">3자리 (007)</option><option value="4">4자리 (0007)</option></select></div>
+    </div>
+    <div class="actions"><button class="p" id="btn-save">저장</button></div>
+    <div id="s-msg"></div>
+  </div>
+</section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let S = null; // 서버 상태
+let previewUrl = null;
+
+async function api(path, opt = {}) {
+  const init = { method: opt.method || 'GET', headers: opt.headers || {} };
+  if (opt.json !== undefined) { init.headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(opt.json); }
+  if (opt.body !== undefined) init.body = opt.body;
+  const r = await fetch(path, init);
+  if (!r.ok) {
+    let msg = '처리하지 못했습니다.';
+    try { msg = (await r.json()).error || msg; } catch { /* 본문 없음 */ }
+    throw new Error(msg);
+  }
+  return opt.raw ? r : r.json();
+}
+function note(id, text, kind) { $(id).innerHTML = text ? `<div class="msg${kind ? ' ' + kind : ''}">${text}</div>` : ''; }
+function missingNote(r) {
+  const m = decodeURIComponent(r.headers.get('X-Missing-Glyphs') || '');
+  return m ? `PDF 글꼴에 없는 글자가 있어 빈칸으로 나옵니다: <b>${esc([...m].join(' '))}</b> (양식에서 한글이나 다른 기호로 바꿔 주세요)` : '';
+}
+function nameFromDisposition(h) {
+  const m = /filename\*=UTF-8''([^;]+)/i.exec(h || '');
+  return m ? decodeURIComponent(m[1]) : null;
+}
+/** 서버가 정한 파일 이름 그대로 저장한다 */
+async function download(url) {
+  const r = await api(url, { raw: true });
+  const blob = await r.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = nameFromDisposition(r.headers.get('Content-Disposition')) || 'gongmun.pdf';
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+  return r;
+}
+
+async function refresh() {
+  S = await api('/api/state');
+  const f = S.form;
+  $('m-noform').classList.toggle('hidden', !!f);
+  $('m-main').classList.toggle('hidden', !f);
+  if (!$('m-date').value) $('m-date').value = S.today;
+  if (f) {
+    const ph = f.placeholders;
+    const tags = ['교회명', '문서번호', '날짜'].map(k => ph[k] ? `[${k}] ${ph[k]}곳` : null).filter(Boolean).join(' · ') || '자리 표시 없음';
+    $('m-formline').innerHTML = `양식 <b>${esc(f.name)}</b><br>제목: ${esc(f.title || '(제목 칸을 찾지 못함)')}<br><span class="hint">${esc(tags)}</span>` +
+      (ph['교회명'] ? '' : '<div class="msg warn">양식에 [교회명] 자리가 없습니다. 설정에서 양식을 확인해 주세요.</div>');
+    $('m-datewrap').classList.toggle('hidden', !ph['날짜']);
+  }
+  renderLedger(); renderSettings(); schedulePlan();
+}
+
+/* ── 공문 만들기 ── */
+let planTimer = null;
+function schedulePlan() { clearTimeout(planTimer); planTimer = setTimeout(updatePlan, 250); }
+async function updatePlan() {
+  if (!S || !S.form) return;
+  const text = $('m-churches').value;
+  if (!text.trim()) { $('m-plan').innerHTML = ''; $('m-mergewrap').classList.add('hidden'); return; }
+  try {
+    const p = await api('/api/plan', { method: 'POST', json: { churches: text, date: $('m-date').value } });
+    $('m-mergewrap').classList.toggle('hidden', p.rows.length < 2);
+    const rows = p.rows.map(r => `<tr><td class="no">${esc(r.docNo)}</td><td>${esc(r.church)}${r.issuedBefore.length ? `<span class="badge">이미 발급 ${r.issuedBefore.map(b => esc(b.no) + '번').join(', ')}</span>` : ''}</td><td class="file">${esc(r.fileName)}</td></tr>`).join('');
+    $('m-plan').innerHTML = `<div class="scroll"><table><thead><tr><th class="no">번호</th><th>교회명</th><th>파일 이름</th></tr></thead><tbody>${rows}</tbody></table></div>` +
+      `<div class="hint">${p.rows.length}곳${p.duplicates.length ? ` · 겹친 이름 ${p.duplicates.length}개는 한 번만 발급합니다` : ''}</div>`;
+  } catch (e) { $('m-plan').innerHTML = `<div class="msg err">${esc(e.message)}</div>`; }
+}
+$('m-churches').addEventListener('input', schedulePlan);
+$('m-date').addEventListener('change', schedulePlan);
+
+$('btn-preview').onclick = async () => {
+  try {
+    const first = $('m-churches').value.split(/[\r\n\t]+/).map(s => s.trim()).find(Boolean) || '';
+    const r = await api('/api/preview', { method: 'POST', json: { church: first, date: $('m-date').value }, raw: true });
+    const blob = await r.blob();
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    previewUrl = URL.createObjectURL(blob);
+    $('m-frame').src = previewUrl + '#navpanes=0&view=FitH';
+    $('m-frame').classList.remove('hidden');
+    $('m-frame-empty').classList.add('hidden');
+    $('m-frame-link').innerHTML = `미리보기가 보이지 않으면 <a href="${previewUrl}" target="_blank" rel="noopener">새 창에서 열기</a> · 미리보기는 문서번호를 쓰지 않습니다.`;
+    $('m-frame-link').classList.remove('hidden');
+    note('m-msg', missingNote(r), 'warn');
+  } catch (e) { note('m-msg', esc(e.message), 'err'); }
+};
+
+$('btn-issue').onclick = async () => {
+  const btn = $('btn-issue');
+  try {
+    const plan = await api('/api/plan', { method: 'POST', json: { churches: $('m-churches').value, date: $('m-date').value } });
+    if (!plan.rows.length) return note('m-msg', '교회명을 한 줄에 하나씩 입력해 주세요.', 'err');
+    const again = plan.rows.filter(r => r.issuedBefore.length).map(r => r.church);
+    if (again.length && !confirm(`이미 발급한 교회가 있습니다: ${again.join(', ')}\n그래도 새 문서번호로 발급할까요?`)) return;
+    btn.disabled = true;
+    const { records } = await api('/api/issue', { method: 'POST', json: { churches: $('m-churches').value, date: $('m-date').value } });
+    const ids = records.map(r => r.id).join(',');
+    const url = `/api/download?ids=${ids}${records.length > 1 && $('m-merge').checked ? '&merge=1' : ''}`;
+    $('m-churches').value = '';
+    $('m-plan').innerHTML = '';
+    $('m-mergewrap').classList.add('hidden');
+    const range = records.length > 1 ? `${records[0].docNo}~${records[records.length - 1].docNo}번` : `${records[0].docNo}번`;
+    $('m-result').innerHTML = `<div class="msg">${records.length}곳 발급 완료 (문서번호 ${esc(range)}). 내려받기가 시작되지 않으면 <a href="#" data-dl="${esc(url)}">다시 받기</a></div>` +
+      `<div class="scroll"><table><tbody>${records.map(r => `<tr><td class="no">${esc(r.docNo)}</td><td>${esc(r.church)}</td><td class="file"><a href="#" data-dl="/api/download?ids=${r.id}">${esc(r.fileName)}</a></td></tr>`).join('')}</tbody></table></div>`;
+    note('m-msg', '');
+    await refresh();
+    const r = await download(url);
+    note('m-msg', missingNote(r), 'warn');
+  } catch (e) { note('m-msg', esc(e.message), 'err'); }
+  finally { btn.disabled = false; }
+};
+
+document.addEventListener('click', async e => {
+  const dl = e.target.closest('[data-dl]');
+  if (dl) {
+    e.preventDefault();
+    try { await download(dl.dataset.dl); } catch (err) { alert(err.message); }
+    return;
+  }
+  const go = e.target.closest('[data-goto]');
+  if (go) document.querySelector(`nav button[data-t=${go.dataset.goto}]`).click();
+});
+
+/* ── 발행대장 ── */
+function renderLedger() {
+  const rows = S.ledger.slice().reverse();
+  $('l-body').innerHTML = rows.map(r => `<tr><td class="no"><input type="checkbox" class="l-pick" value="${r.id}" aria-label="선택"></td><td class="no">${esc(r.docNo)}</td><td class="no">${esc(r.date)}</td><td>${esc(r.church)}</td><td class="file">${esc(r.fileName)}</td><td><button class="s" data-dl="/api/download?ids=${r.id}">PDF</button></td></tr>`).join('')
+    || '<tr><td colspan="6" class="hint">아직 발급한 공문이 없습니다.</td></tr>';
+  $('l-all').checked = false;
+  updatePicked();
+}
+function updatePicked() {
+  const n = document.querySelectorAll('.l-pick:checked').length;
+  $('btn-dl-selected').disabled = !n;
+  $('btn-dl-selected').textContent = n ? `선택한 공문 받기 (${n})` : '선택한 공문 받기';
+}
+$('l-body').addEventListener('change', updatePicked);
+$('l-all').onchange = () => { document.querySelectorAll('.l-pick').forEach(c => { c.checked = $('l-all').checked; }); updatePicked(); };
+$('btn-dl-selected').onclick = async () => {
+  const ids = [...document.querySelectorAll('.l-pick:checked')].map(c => c.value).reverse().join(',');
+  try { await download(`/api/download?ids=${ids}`); } catch (e) { note('l-msg', esc(e.message), 'err'); }
+};
+$('btn-csv').onclick = () => download('/api/ledger.csv').catch(e => note('l-msg', esc(e.message), 'err'));
+
+/* ── 설정 ── */
+function renderSettings() {
+  const f = S.form;
+  if (f) {
+    const ph = f.placeholders;
+    $('s-forminfo').innerHTML = `<b>${esc(f.name)}</b> · ${esc(new Date(f.uploadedAt).toLocaleString('ko-KR'))}<br>` +
+      ['교회명', '문서번호', '날짜'].map(k => `[${k}] ${ph[k] ? ph[k] + '곳' : '<span class="hint">없음</span>'}`).join(' · ');
+    $('s-sheetwrap').classList.toggle('hidden', f.sheets.length < 2);
+    $('s-sheet').innerHTML = f.sheets.map(n => `<option${n === f.sheet ? ' selected' : ''}>${esc(n)}</option>`).join('');
+  }
+  $('btn-form-dl').classList.toggle('hidden', !f);
+  $('s-fileNameFormat').value = S.settings.fileNameFormat;
+  $('s-nextNumber').value = S.settings.nextNumber;
+  $('s-digits').value = String(S.settings.digits);
+  updateExample();
+}
+function updateExample() {
+  if (!S) return;
+  const no = String(S.settings.nextNumber).padStart(Number($('s-digits').value) || 0, '0');
+  const vars = { 제목: (S.form && S.form.title) || '제목', 교회명: '한동교회', 문서번호: no, 날짜: ($('m-date').value || S.today).replace(/-/g, '.') };
+  const name = ($('s-fileNameFormat').value || S.defaultFileFormat).replace(/\[\s*(제목|교회명|문서번호|날짜)\s*\]/g, (a, k) => vars[k]).replace(/[\\/:*?"<>|]+/g, ' ');
+  $('s-example').innerHTML = `예: <b>${esc(name)}.pdf</b>`;
+}
+['s-fileNameFormat', 's-digits'].forEach(id => $(id).addEventListener('input', updateExample));
+
+$('s-file').onchange = async () => {
+  const file = $('s-file').files[0];
+  if (!file) return;
+  note('s-formmsg', '양식을 읽는 중…');
+  try {
+    const r = await api('/api/form', { method: 'POST', body: file, headers: { 'X-File-Name': encodeURIComponent(file.name) } });
+    const warn = [];
+    if (!r.form.placeholders['교회명']) warn.push('양식에 [교회명] 자리가 없습니다. 교회 이름이 들어갈 칸에 [교회명]이라고 적어 주세요.');
+    if (!r.form.placeholders['문서번호']) warn.push('양식에 [문서번호] 자리가 없습니다.');
+    if (r.missing.length) warn.push(`PDF 글꼴에 없는 글자: <b>${esc(r.missing.join(' '))}</b> (빈칸으로 나옵니다)`);
+    if (r.pages > 1) warn.push(`양식이 PDF ${r.pages}쪽으로 나옵니다. 엑셀의 인쇄 영역·배율을 확인해 주세요.`);
+    note('s-formmsg', warn.length ? warn.join('<br>') : `양식을 올렸습니다. 「${esc(r.form.sheet)}」 시트를 씁니다.`, warn.length ? 'warn' : '');
+    $('s-file').value = '';
+    await refresh();
+  } catch (e) { note('s-formmsg', esc(e.message), 'err'); }
+};
+$('btn-form-dl').onclick = () => download('/api/form.xlsx').catch(e => note('s-formmsg', esc(e.message), 'err'));
+
+$('btn-save').onclick = async () => {
+  try {
+    const body = { fileNameFormat: $('s-fileNameFormat').value, nextNumber: $('s-nextNumber').value, digits: $('s-digits').value };
+    if (S.form && S.form.sheets.length > 1) body.sheet = $('s-sheet').value;
+    const j = await api('/api/settings', { method: 'PUT', json: body });
+    await refresh();
+    note('s-msg', j.warning ? esc(j.warning) : '저장했습니다.', j.warning ? 'warn' : '');
+  } catch (e) { note('s-msg', esc(e.message), 'err'); }
+};
+
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('on', x === b));
+  ['make', 'ledger', 'settings'].forEach(t => $('t-' + t).classList.toggle('hidden', t !== b.dataset.t));
+  refresh().catch(e => note('m-msg', esc(e.message), 'err'));
+});
+
+refresh().catch(e => note('m-msg', esc(e.message), 'err'));
+</script>
+</body>
+</html>
