@@ -331,3 +331,18 @@ test('서버: 양식 올리기 → 발급 → PDF·ZIP 내려받기', async () =
     fs.rmSync(process.env.GONGMUN_DATA_DIR, { recursive: true, force: true });
   }
 });
+
+test('발행대장 삭제: 마지막 번호를 지우면 다음 번호가 되돌아간다', () => {
+  const st = core.defaultState();
+  st.form = { hash: 'h', sheet: '양식' };
+  st.settings.nextNumber = 24;
+  core.issue(st, ['가교회', '나교회', '다교회'], '2026.10.24', '제목'); // 24, 25, 26
+  assert.deepStrictEqual(core.removeRecords(st, [2]), { removed: 1, nextNumber: 27 }, '중간 번호는 다음 번호를 바꾸지 않는다');
+  assert.deepStrictEqual(core.removeRecords(st, [1, 3]), { removed: 2, nextNumber: 24 }, '모두 지우면 처음 번호로');
+  core.issue(st, ['라교회', '마교회'], '2026.10.24', '제목'); // 24, 25
+  core.removeRecords(st, [st.ledger[0].id]);
+  const [r] = core.issue(st, ['바교회'], '2026.10.24', '제목');
+  assert.strictEqual(r.docNo, '26');
+  assert.strictEqual(new Set(st.ledger.map(x => x.id)).size, st.ledger.length, '내부 번호는 겹치지 않는다');
+  assert.throws(() => core.removeRecords(st, [99]), /찾지 못/);
+});

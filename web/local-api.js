@@ -159,6 +159,12 @@ const routes = {
     }
     return file(writeZip(files), 'application/zip', { 'Content-Disposition': disposition('attachment', `${groupName}.zip`) });
   },
+  'POST /api/remove': async (url, init) => {
+    const b = await body(init);
+    const result = core.removeRecords(state, Array.isArray(b.ids) ? b.ids : []);
+    save();
+    return json(result);
+  },
   'GET /api/ledger.csv': () => file(core.ledgerCsv(state.ledger), 'text/csv; charset=utf-8', { 'Content-Disposition': disposition('attachment', '공문 발행대장.csv') }),
 };
 

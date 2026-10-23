@@ -254,6 +254,13 @@ const routes = {
     send(res, 200, writeZip(files), 'application/zip', { 'Content-Disposition': disposition('attachment', `${groupName}.zip`) });
   },
 
+  'POST /api/remove': async req => {
+    const body = await readJson(req);
+    const result = core.removeRecords(state, Array.isArray(body.ids) ? body.ids : []);
+    save();
+    return result;
+  },
+
   'GET /api/ledger.csv': (req, res) => {
     send(res, 200, core.ledgerCsv(state.ledger), 'text/csv; charset=utf-8', { 'Content-Disposition': disposition('attachment', '공문 발행대장.csv') });
   },

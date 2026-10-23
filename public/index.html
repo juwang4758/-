@@ -95,6 +95,7 @@ a{color:var(--pri)}
       <h2 style="margin:0">발행대장</h2>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="s" id="btn-dl-selected" disabled>선택한 공문 받기</button>
+        <button class="s" id="btn-remove" disabled>선택한 공문 삭제</button>
         <button class="s" id="btn-csv">발행대장 엑셀(CSV)</button>
       </div>
     </div>
@@ -274,12 +275,23 @@ function updatePicked() {
   const n = document.querySelectorAll('.l-pick:checked').length;
   $('btn-dl-selected').disabled = !n;
   $('btn-dl-selected').textContent = n ? `선택한 공문 받기 (${n})` : '선택한 공문 받기';
+  $('btn-remove').disabled = !n;
 }
 $('l-body').addEventListener('change', updatePicked);
 $('l-all').onchange = () => { document.querySelectorAll('.l-pick').forEach(c => { c.checked = $('l-all').checked; }); updatePicked(); };
 $('btn-dl-selected').onclick = async () => {
   const ids = [...document.querySelectorAll('.l-pick:checked')].map(c => c.value).reverse().join(',');
   try { await download(`/api/download?ids=${ids}`); } catch (e) { note('l-msg', esc(e.message), 'err'); }
+};
+$('btn-remove').onclick = async () => {
+  const ids = [...document.querySelectorAll('.l-pick:checked')].map(c => Number(c.value));
+  const names = S.ledger.filter(r => ids.includes(r.id)).map(r => `${r.docNo}번 ${r.church}`);
+  if (!confirm(`발행대장에서 ${ids.length}건을 지웁니다.\n${names.join('\n')}\n\n가장 나중에 발급한 번호를 지우면 다음 문서번호도 그 번호로 돌아갑니다.`)) return;
+  try {
+    const r = await api('/api/remove', { method: 'POST', json: { ids } });
+    await refresh();
+    note('l-msg', `${r.removed}건을 지웠습니다. 다음 문서번호는 ${r.nextNumber}번입니다.`);
+  } catch (e) { note('l-msg', esc(e.message), 'err'); }
 };
 $('btn-csv').onclick = () => download('/api/ledger.csv').catch(e => note('l-msg', esc(e.message), 'err'));
 
